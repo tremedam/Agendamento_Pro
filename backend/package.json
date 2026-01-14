@@ -1,0 +1,58 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend API para Agenda Recebimento Mercadorias",
+  "main": "server-hibrido.js",
+  "scripts": {
+    "start": "node server-hibrido.js",
+    "dev": "node server-hibrido.js",
+    "start-old": "node server.js",
+    "create-db": "node database/criar-banco.js",
+    "setup": "node database/setup.js",
+    "setup:import": "node database/setup.js --import",
+    "install-complete": "npm run create-db && npm run setup",
+    "setup:env": "node setup-env.js",
+    "dev:local": "npm run setup:env local && npm start",
+    "dev:empresa": "npm run setup:env empresa && npm start",
+    "clean:test-data": "node scripts/limpar-dados-teste.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:e2e": "jest --testPathPattern=e2e",
+    "test:ci": "jest --coverage --ci --watchAll=false",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
+  },
+  "keywords": [
+    "agenda",
+    "mercadorias",
+    "mysql"
+  ],
+  "author": "Sistema Agenda",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.1.0",
+    "express-session": "^1.18.0",
+    "express-slow-down": "^3.0.0",
+    "express-validator": "^7.2.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.6.3",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "mock-fs": "^5.5.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.4"
+  }
+}

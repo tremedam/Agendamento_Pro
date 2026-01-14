@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="Sistema administrativo para gestão de agendamentos de recebimento de mercadorias" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>Agenda ADM</title>
+  <link rel="stylesheet" href="../shared/styles-common.css" />
+  <link rel="stylesheet" href="styles-admin.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body data-theme="light">
+  <!-- ================= Header de Administração ================= -->
+  <header>
+    <section class="header-content">
+      <div class="logo">
+        <img src="../assets/Logo.png" alt="Logo" />
+      </div>
+      <div class="header-center">
+        <h1>Agenda de Recebimento de Mercadorias</h1>
+        <span class="access-level admin-access">Acesso: Administração - Controle Total</span>
+      </div>
+      <aside class="header-info">
+        <div class="theme-toggle">
+          <button id="themeToggle" class="theme-btn">
+            <i id="themeIcon" class="fas fa-moon"></i>
+          </button>
+        </div>
+        <div class="update-info">
+          <i class="fas fa-clock"></i>
+          <span id="lastUpdate">Carregando...</span>
+        </div>
+        <div class="user-info">
+          <i class="fas fa-user-shield"></i>
+          <span id="userId">administrador@example.com</span>
+        </div>
+      </aside>
+    </section>
+  </header>
+
+  <main class="main-content">
+    <!-- =========== Barra de Ações Administrativas =========== -->
+    <section class="quick-actions">
+      <div class="actions-container">
+        <div class="primary-actions">
+          <button class="btn btn-primary" onclick="abrirModalNovoItem()">
+            <i class="fas fa-plus"></i> Novo Agendamento
+          </button>
+          <button class="btn btn-success" onclick="atualizarDados()">
+            <i class="fas fa-sync-alt"></i> Atualizar Dados
+          </button>
+          <button class="btn btn-warning" onclick="aprovarTodosItens()">
+            <i class="fas fa-check-double"></i> Aprovar Pendentes
+          </button>
+        </div>
+
+        <div class="secondary-actions">
+          <button class="btn btn-success" onclick="exportarPDF()">
+            <i class="fas fa-file-pdf"></i> Exportar PDF
+          </button>
+          <button class="btn btn-info" onclick="exportarExcel()">
+            <i class="fas fa-file-excel"></i> Exportar Excel
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================  Filtros Compactos ================= -->
+    <section class="filters-section collapsed" id="filtersSection">
+      <div class="filters-header" onclick="toggleFiltros()">
+        <h2><i class="fas fa-filter"></i> Filtros de Busca</h2>
+        <i class="fas fa-chevron-down toggle-icon" id="toggleIcon"></i>
+      </div>
+
+      <section class="filters-content" id="filtersContent">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label for="busca">Busca Geral:</label>
+            <input type="text" id="busca" class="filter-input" placeholder="Código, descrição ou fornecedor..." />
+          </div>
+
+          <div class="filter-group">
+            <label for="fornecedor">Fornecedor:</label>
+            <select id="fornecedor" class="filter-select">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="status">Status:</label>
+            <select id="status" class="filter-select">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="tipo">Código do Produto:</label>
+            <select id="tipo" class="filter-select">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="periodo">Período:</label>
+            <select id="periodo" class="filter-select" onchange="aplicarFiltroPeriodo()">
+              <option value="">Todos</option>
+              <option value="hoje">Hoje</option>
+              <option value="semana">Esta Semana</option>
+              <option value="customizado">Personalizado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ========== Container para campos de data personalizada ========= -->
+        <section class="custom-date-container" id="customDateContainer" style="display: none">
+          <div class="filter-group">
+            <label for="dataInicio"> <i class="fas fa-calendar-alt"></i> De: </label>
+            <input type="date" id="dataInicio" class="filter-input" />
+          </div>
+
+          <div class="filter-group">
+            <label for="dataFim"> <i class="fas fa-calendar-alt"></i> Até: </label>
+            <input type="date" id="dataFim" class="filter-input" />
+          </div>
+        </section>
+
+        <div class="filter-actions">
+          <button class="btn btn-primary" onclick="aplicarFiltros()"><i class="fas fa-search"></i> Buscar</button>
+          <button class="btn btn-secondary" onclick="limparFiltros()"><i class="fas fa-times"></i> Limpar</button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ================ Dashboard de Estatísticas ================ -->
+    <section class="summary-section">
+      <div class="summary-cards">
+        <div class="summary-card card-total">
+          <div class="card-icon">
+            <i class="fas fa-boxes"></i>
+          </div>
+          <div class="card-content">
+            <h3>Total de Itens</h3>
+            <span class="card-number" id="totalItens">0</span>
+            <span class="card-subtitle">Todos os itens chegando</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-agendado">
+          <div class="card-icon">
+            <i class="fas fa-calendar-check"></i>
+          </div>
+          <div class="card-content">
+            <h3>Agendado</h3>
+            <span class="card-number" id="agendado">0</span>
+            <span class="card-subtitle">Entregas agendadas</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-prev-entrega">
+          <div class="card-icon">
+            <i class="fas fa-truck"></i>
+          </div>
+          <div class="card-content">
+            <h3>Prev. Sem Agenda</h3>
+            <span class="card-number" id="prevEntrega">0</span>
+            <span class="card-subtitle">Previsão de entrega</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-prev-atraso">
+          <div class="card-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="card-content">
+            <h3>Prev. Entrega em Atraso</h3>
+            <span class="card-number" id="prevAtraso">0</span>
+            <span class="card-subtitle">Entregas atrasadas</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-prev-hoje">
+          <div class="card-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="card-content">
+            <h3>Prev. Hoje</h3>
+            <span class="card-number" id="prevHoje">0</span>
+            <span class="card-subtitle">Entregas previstas hoje</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================ Tabela de Dados ================ -->
+    <section class="table-section">
+      <div class="table-header">
+        <h2><i class="fas fa-table"></i> Agenda de Recebimentos</h2>
+        <div class="table-controls">
+          <div class="view-options">
+            <button class="view-btn active" onclick="setTableView('compact')" title="Visualização Compacta">
+              <i class="fas fa-list"></i>
+            </button>
+            <button class="view-btn" onclick="setTableView('detailed')" title="Visualização Detalhada">
+              <i class="fas fa-th-list"></i>
+            </button>
+          </div>
+          <div class="items-per-page">
+            <label>Itens por página:</label>
+            <select id="itemsPerPage">
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="agendaTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortTable('codAnt')">Código <i class="fas fa-sort"></i></th>
+              <th class="sortable" onclick="sortTable('descricao')">Descrição <i class="fas fa-sort"></i></th>
+              <th class="sortable" onclick="sortTable('fornecedor')">Fornecedor <i class="fas fa-sort"></i></th>
+              <th class="sortable" onclick="sortTable('status')">Status <i class="fas fa-sort"></i></th>
+              <th class="sortable" onclick="sortTable('data')">Data Prevista <i class="fas fa-sort"></i></th>
+              <th class="sortable" onclick="sortTable('qtde')">Qtde <i class="fas fa-sort"></i></th>
+              <th class="sortable" onclick="sortTable('saldo')">Saldo <i class="fas fa-sort"></i></th>
+              <th class="status-approval">Status Aprovação</th>
+              <th class="details-column">Observações</th>
+              <th class="actions-column">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- =========== Mensagem inicial mais amigável =========== -->
+            <tr id="loadingRow">
+              <td colspan="10" style="text-align: center; padding: 2rem">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem">
+                  <i class="fas fa-sync-alt fa-spin"></i>
+                  <span>Carregando agendamentos para administração...</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ================ Paginação ================ -->
+      <div class="pagination">
+        <button class="btn btn-sm" onclick="previousPage()" id="btnPrevious">
+          <i class="fas fa-chevron-left"></i> Anterior
+        </button>
+        <span class="pagination-info">
+          Página <span id="currentPage">1</span> de <span id="totalPages">1</span> (<span id="totalRecords">0</span>
+          registros)
+        </span>
+        <button class="btn btn-sm" onclick="nextPage()" id="btnNext">
+          Próxima <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================ Modal Novo/Editar Item ================ -->
+  <section id="modal-item" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="modal-titulo"><i class="fas fa-plus"></i> Novo Agendamento</h3>
+        <button class="btn-close" onclick="fecharModal('modal-item')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="form-item" class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="item-codigo">Código do Produto:</label>
+            <select id="item-codigo" name="codigo">
+              <option value="">-- Selecione o Código --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="item-data">Data de Entrega:</label>
+            <input type="date" id="item-data" name="data" />
+          </div>
+
+          <div class="form-group">
+            <label for="item-fornecedor">Fornecedor:</label>
+            <select id="item-fornecedor" name="fornecedor">
+              <option value="">-- Selecione o Fornecedor --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="item-produto">Produto/Descrição:</label>
+            <select id="item-produto" name="produto">
+              <option value="">-- Selecione o Produto --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="item-quantidade">Quantidade:</label>
+            <input type="number" id="item-quantidade" name="quantidade" min="0" step="0.01" />
+          </div>
+
+          <div class="form-group">
+            <label for="item-status">Status:</label>
+            <select id="item-status" name="status">
+              <option value="">-- Selecione o Status --</option>
+              <option value="Agendado">Agendado</option>
+              <option value="Prev. Sem Agenda">Prev. Sem Agenda</option>
+              <option value="Prev. Entrega em Atraso">Prev. Entrega em Atraso</option>
+            </select>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="item-observacoes">Observações:</label>
+            <textarea id="item-observacoes" name="observacoes" rows="3"
+              placeholder="Informações adicionais sobre o agendamento..."></textarea>
+          </div>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-item')">Cancelar</button>
+        <button type="submit" form="form-item" class="btn btn-primary"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal de Confirmação -->
+  <section id="modal-confirmacao" class="modal">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 id="confirmacao-titulo">Confirmar Ação</h3>
+        <button class="btn-close" onclick="fecharModal('modal-confirmacao')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmacao-mensagem">Tem certeza que deseja executar esta ação?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-confirmacao')">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btn-confirmar" onclick="executarAcaoConfirmada()">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading-overlay" style="display: none">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Carregando dados...</p>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="footer">
+    <aside class="footer-content">
+      <div class="footer-section">
+        <div class="footer-logo">
+          <img src="../assets/Logo.png" alt="Logo" />
+          <h3>Sistema de Agenda</h3>
+        </div>
+        <p class="footer-description">Sistema de Gestão de Agenda de Recebimento de Mercadorias</p>
+      </div>
+
+      <div class="footer-section">
+        <h4>Informações</h4>
+        <ul class="footer-links">
+          <li><i class="fas fa-envelope"></i> suporte@example.com</li>
+          <li><i class="fas fa-phone"></i> +55 (11) 1234-5678</li>
+          <li><i class="fas fa-clock"></i> Seg-Sex: 8h às 18h</li>
+        </ul>
+      </div>
+
+      <div class="footer-section">
+        <h4>Estatísticas do Sistema</h4>
+        <ul class="footer-stats">
+          <li><i class="fas fa-database"></i> <span id="footerTotalRecords">0</span> registros</li>
+          <li><i class="fas fa-sync-alt"></i> Última atualização: <span id="footerLastUpdate">--</span></li>
+          <li><i class="fas fa-user-shield"></i> Usuário: <span id="footerUser">--</span></li>
+        </ul>
+      </div>
+    </aside>
+
+    <aside class="footer-bottom">
+      <div class="footer-bottom-content">
+        <p>&copy; 2025 Sistema de Agenda. Todos os direitos reservados.</p>
+        <p class="footer-version">Sistema AgendaReceb v1.0 | Desenvolvido para Desktop</p>
+      </div>
+    </aside>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="../shared/config.js"></script>
+  <script src="../shared/api-manager.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/utils.js"></script>
+  <script src="script-admin.js"></script>
+  <script src="script-admin-crud.js"></script>
+</body>
+
+</html>

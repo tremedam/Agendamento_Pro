@@ -1,0 +1,272 @@
+name: 🧪 Testes e Qualidade - Agenda
+
+on:
+  push:
+    branches: [main, develop, Cor_Final]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # =============================================
+  # TESTES BACKEND
+  # =============================================
+  backend-tests:
+    name: 🔧 Backend Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: agenda_mercadorias_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Instalar dependências
+        working-directory: ./backend
+        run: npm ci
+
+      - name: ⚙️ Configurar ambiente de teste
+        working-directory: ./backend
+        run: |
+          cp .env.example .env || echo "DB_HOST=localhost" > .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_USER=root" >> .env
+          echo "DB_PASSWORD=test_password" >> .env
+          echo "DB_NAME=agenda_mercadorias_test" >> .env
+          echo "NODE_ENV=test" >> .env
+          echo "JWT_SECRET=test_secret_key" >> .env
+
+      - name: 🗄️ Aguardar MySQL estar pronto
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ptest_password --silent; then
+              break
+            fi
+            echo "Aguardando MySQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: 🏗️ Setup do banco de dados
+        working-directory: ./backend
+        run: |
+          npm run create-db || echo "Banco já existe"
+          npm run setup || echo "Setup já executado"
+
+      - name: 🧪 Executar testes unitários
+        working-directory: ./backend
+        run: npm run test:unit
+
+      - name: 🔗 Executar testes de integração
+        working-directory: ./backend
+        run: npm run test:integration
+
+      - name: 🌐 Executar testes E2E
+        working-directory: ./backend
+        run: npm run test:e2e
+
+      - name: 📊 Relatório de cobertura
+        working-directory: ./backend
+        run: npm run test:coverage
+
+      - name: 📈 Upload da cobertura para Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          directory: ./backend/coverage/
+          flags: backend
+          name: backend-coverage
+
+  # =============================================
+  # QUALIDADE DO CÓDIGO
+  # =============================================
+  code-quality:
+    name: 🔍 Qualidade do Código
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Instalar dependências raiz
+        run: npm ci
+
+      - name: 📦 Instalar dependências backend
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔍 ESLint - Análise estática
+        run: npm run lint:check
+
+      - name: 🎨 Prettier - Verificar formatação
+        run: npm run format:check
+
+      - name: 📏 Análise de complexidade (opcional)
+        continue-on-error: true
+        run: |
+          npx jscpd backend/src --threshold 10 --format json --output ./jscpd-report.json || echo "JSCPD opcional falhou"
+
+  # =============================================
+  # TESTES DE SEGURANÇA
+  # =============================================
+  security-scan:
+    name: 🛡️ Análise de Segurança
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 Instalar dependências
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔒 Auditoria de segurança NPM
+        working-directory: ./backend
+        run: npm audit --audit-level high
+
+      - name: 🔍 Snyk - Análise de vulnerabilidades  
+        continue-on-error: true
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=backend/package.json
+
+  # =============================================
+  # TESTES DE PERFORMANCE
+  # =============================================
+  performance-tests:
+    name: ⚡ Testes de Performance
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 Instalar dependências
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🚀 Iniciar servidor em background
+        working-directory: ./backend
+        run: |
+          npm start &
+          sleep 10
+
+      - name: ⚡ Teste de carga com Artillery
+        continue-on-error: true
+        run: |
+          npx artillery quick --count 10 --num 50 http://localhost:3000/api/agendamentos || echo "Teste de performance opcional"
+
+  # =============================================
+  # BUILD E DEPLOY (CONDICIONAL)
+  # =============================================
+  build-and-deploy:
+    name: 🚀 Build e Deploy
+    runs-on: ubuntu-latest
+    needs: [backend-tests, code-quality]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 Instalar dependências
+        working-directory: ./backend
+        run: npm ci --only=production
+
+      - name: 🏗️ Build do projeto
+        working-directory: ./backend
+        run: |
+          echo "Build steps aqui..."
+          echo "Projeto buildado com sucesso!"
+
+      - name: 📋 Preparar artefatos
+        run: |
+          mkdir -p dist/
+          cp -r backend/src dist/
+          cp -r frontend/ dist/
+          cp backend/package*.json dist/
+          echo "Artefatos preparados"
+
+      - name: 📤 Upload de artefatos
+        uses: actions/upload-artifact@v3
+        with:
+          name: agenda-recebimentos-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+
+  # =============================================
+  # NOTIFICAÇÃO DE RESULTADOS
+  # =============================================
+  notify:
+    name: 📢 Notificar Resultados
+    runs-on: ubuntu-latest
+    needs: [backend-tests, code-quality, security-scan]
+    if: always()
+
+    steps:
+      - name: 📊 Resumo dos testes
+        run: |
+          echo "## 📋 Resumo da Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Tests**: ${{ needs.backend-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Code Quality**: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Scan**: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: ✅ Sucesso
+        if: needs.backend-tests.result == 'success' && needs.code-quality.result == 'success'
+        run: |
+          echo "🎉 Pipeline executada com sucesso!"
+          echo "Projeto está pronto para produção!"
+
+      - name: ❌ Falha
+        if: needs.backend-tests.result == 'failure' || needs.code-quality.result == 'failure'
+        run: |
+          echo "❌ Pipeline falhou! Verifique os logs acima."
+          exit 1

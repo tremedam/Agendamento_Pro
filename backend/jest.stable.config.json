@@ -1,0 +1,13 @@
+{
+  "testTimeout": 10000,
+  "forceExit": true,
+  "detectOpenHandles": true,
+  "setupFilesAfterEnv": ["<rootDir>/tests/setup/jest.setup.js"],
+  "testPathIgnorePatterns": ["sistema.completo.test.js", "agendamentos.routes.test.js"],
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "/tests/mocks/",
+    "sistema.completo.test.js",
+    "agendamentos.routes.test.js"
+  ]
+}

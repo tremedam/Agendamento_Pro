@@ -1,0 +1,40 @@
+{
+  "name": "agenda-recebimento-mercadorias",
+  "version": "1.0.0",
+  "description": "Sistema de Agenda de Recebimento de Mercadorias",
+  "main": "backend/server-hibrido.js",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "setup": "cd backend && npm install",
+    "lint": "eslint . --fix",
+    "lint:backend": "eslint backend/ --fix",
+    "lint:frontend": "eslint frontend/ --fix",
+    "lint:check": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:backend": "prettier --write backend/",
+    "format:frontend": "prettier --write frontend/",
+    "format:check": "prettier --check .",
+    "quality": "npm run lint && npm run format",
+    "install:all": "npm install && cd backend && npm install"
+  },
+  "keywords": [
+    "agenda",
+    "mercadorias",
+    "recebimento",
+    "logistica"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  }
+}

@@ -1,0 +1,604 @@
+{
+    "info": {
+        "name": "Sistema Agenda - APIs",
+        "description": "Coleção completa das APIs do Sistema de Agenda de Recebimento de Mercadorias.\n\n**v1.1.0 - Atualização de Autenticação:**\n- ✨ Novo endpoint: /login-usuario (usuários gerais)\n- 🔄 Perfil atualizado: substituição de 'loja' por 'usuario'\n- 🔧 Compatibilidade: /login-loja mantido\n\n**Características:**\n- 🛡️ Segurança Enterprise com rate limiting\n- 🎭 Sistema de Máscaras Temporárias\n- 🔄 Arquitetura Híbrida (dados reais + simulações)\n- 📊 Monitoramento Completo\n- 👥 Acesso via Microsoft AD\n\n**Como usar:**\n1. Execute 'Login Usuario' para usuários gerais via Microsoft AD\n2. Ou execute 'Login' para administradores\n3. O token será salvo automaticamente\n4. Execute outras requisições normalmente\n\n**Variáveis:**\n- `baseUrl`: http://localhost:3000 (dev) ou https://api.example.com (prod)\n- `authToken`: Preenchido automaticamente após login\n- `sessionId`: Preenchido automaticamente para máscaras",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "version": "1.1.0"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000",
+            "type": "string"
+        },
+        {
+            "key": "authToken",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "sessionId",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{authToken}}",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "🔐 Autenticação",
+            "item": [
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Salvar token automaticamente",
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    if (response.success && response.token) {",
+                                    "        pm.collectionVariables.set('authToken', response.token);",
+                                    "        console.log('Token salvo:', response.token.substring(0, 20) + '...');",
+                                    "    }",
+                                    "}",
+                                    "",
+                                    "// Capturar Session ID se presente",
+                                    "const sessionId = pm.response.headers.get('X-Session-Id');",
+                                    "if (sessionId) {",
+                                    "    pm.collectionVariables.set('sessionId', sessionId);",
+                                    "    console.log('Session ID salvo:', sessionId);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"re\": \"123456\",\n  \"senha\": \"senha123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login Usuario",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Salvar token automaticamente",
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    if (response.success && response.token) {",
+                                    "        pm.collectionVariables.set('authToken', response.token);",
+                                    "        pm.collectionVariables.set('sessionId', `sess_${Date.now()}`);",
+                                    "        console.log('Token salvo: ' + response.token.substring(0, 20) + '...');",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"microsoftToken\": \"auto\",\n  \"userInfo\": {\n    \"tipo\": \"usuario\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login-usuario",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login-usuario"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login Loja (Compatibilidade)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"microsoftToken\": \"token_microsoft_opcional\",\n  \"userInfo\": {\n    \"nome\": \"Usuario Loja\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login-loja",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login-loja"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Check Microsoft Auth",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/check-microsoft",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "check-microsoft"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/logout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "logout"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📅 Agendamentos",
+            "item": [
+                {
+                    "name": "Listar Agendamentos",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "// Gerar session ID se não existir",
+                                    "if (!pm.collectionVariables.get('sessionId')) {",
+                                    "    const sessionId = 'sess_' + Date.now();",
+                                    "    pm.collectionVariables.set('sessionId', sessionId);",
+                                    "    console.log('Session ID gerado:', sessionId);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Session-Id",
+                                "value": "{{sessionId}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos?tipo=admin&mascaras=true&limit=50",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos"
+                            ],
+                            "query": [
+                                {
+                                    "key": "tipo",
+                                    "value": "usuario",
+                                    "description": "Tipo de usuário (admin, usuario)"
+                                },
+                                {
+                                    "key": "mascaras",
+                                    "value": "true",
+                                    "description": "Incluir máscaras temporárias"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "50",
+                                    "description": "Limite de registros"
+                                },
+                                {
+                                    "key": "offset",
+                                    "value": "0",
+                                    "description": "Offset para paginação",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "pendente",
+                                    "description": "Filtrar por status",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "fornecedor",
+                                    "value": "FORNECEDOR TESTE",
+                                    "description": "Filtrar por fornecedor",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "data_inicio",
+                                    "value": "2025-09-01",
+                                    "description": "Data inicial (YYYY-MM-DD)",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "data_fim",
+                                    "value": "2025-09-30",
+                                    "description": "Data final (YYYY-MM-DD)",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Criar Agendamento Temporário",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"produto\": \"PRODUTO TESTE POSTMAN\",\n  \"descricao\": \"Produto criado via Postman\",\n  \"fornecedor\": \"FORNECEDOR TESTE LTDA\",\n  \"quantidade\": 25,\n  \"data\": \"2025-09-25\",\n  \"hora\": \"14:30\",\n  \"observacoes\": \"Agendamento de teste criado via API\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar Agendamento Temporário",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"quantidade\": 50,\n  \"observacoes\": \"Quantidade atualizada via Postman\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos/temp_12345",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos",
+                                "temp_12345"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Aprovar Agendamento",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"observacoes\": \"Aprovado via Postman - documentação completa\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos/1/aprovar",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos",
+                                "1",
+                                "aprovar"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Rejeitar Agendamento",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"motivo\": \"Documentação incompleta - faltam notas fiscais\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos/1/rejeitar",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos",
+                                "1",
+                                "rejeitar"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Excluir Agendamento Temporário",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "X-Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos/temp_12345",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos",
+                                "temp_12345"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🏥 Monitoramento",
+            "item": [
+                {
+                    "name": "Ping",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/ping",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "ping"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Health Check Básico",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/health",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "health"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Health Check Detalhado",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/health/detailed",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "health",
+                                "detailed"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Health Check Database",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/health/database",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "health",
+                                "database"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Rate Limits Info",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/health/rate-limits",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "health",
+                                "rate-limits"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🧪 Testes de Rate Limiting",
+            "item": [
+                {
+                    "name": "Teste Rate Limit Login (5 tentativas)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"re\": \"USUARIO_INEXISTENTE\",\n  \"senha\": \"senha_errada\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Teste Rate Limit API (30/min)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Session-Id",
+                                "value": "test_session"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agendamentos?limit=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agendamentos"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

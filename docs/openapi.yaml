@@ -1,0 +1,905 @@
+openapi: 3.0.3
+info:
+  title: Sistema de Agenda - API
+  description: |
+    APIs RESTful para sistema de agendamento de recebimento de mercadorias com arquitetura híbrida inovadora.
+    
+    **Características Principais:**
+    - Segurança Enterprise com rate limiting multicamadas  
+    - Sistema de Máscaras Temporárias (diferencial único)
+    - Arquitetura Híbrida (dados reais + simulações)
+    - Monitoramento Completo com health checks
+    
+    **Base URL Desenvolvimento:** `http://localhost:3000`
+    **Base URL Produção:** `https://api.example.com`
+  version: 1.0.0
+  contact:
+    name: Sistema Agenda
+    url: https://github.com/tremedam/AgendaReceb_Mercadorias
+  license:
+    name: ISC
+    
+servers:
+  - url: http://localhost:3000
+    description: Servidor de Desenvolvimento
+  - url: https://api.example.com
+    description: Servidor de Produção
+
+security:
+  - BearerAuth: []
+  - SessionAuth: []
+
+paths:
+  # ===========================================
+  # AUTENTICAÇÃO
+  # ===========================================
+  
+  /api/auth/login:
+    post:
+      tags:
+        - Autenticação
+      summary: Realizar login
+      description: Autenticação com RE (Registro de Empregado) e senha
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - re
+                - senha
+              properties:
+                re:
+                  type: string
+                  example: "123456"
+                  description: Registro de Empregado
+                senha:
+                  type: string
+                  format: password
+                  example: "senha123"
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+          
+  /api/auth/login-usuario:
+    post:
+      tags:
+        - Autenticação
+      summary: Login automático de usuário geral
+      description: Autenticação automática para usuários gerais via Microsoft AD
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                microsoftToken:
+                  type: string
+                  description: Token de autenticação Microsoft
+                  example: "auto"
+                userInfo:
+                  type: object
+                  properties:
+                    tipo:
+                      type: string
+                      example: "usuario"
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /api/auth/login-loja:
+    post:
+      tags:
+        - Autenticação
+      summary: Login automático da loja (compatibilidade)
+      description: Mantido para compatibilidade - recomenda-se usar /login-usuario
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                microsoftToken:
+                  type: string
+                  description: Token de autenticação Microsoft (opcional)
+                userInfo:
+                  type: object
+                  properties:
+                    nome:
+                      type: string
+                      example: "Usuario Loja"
+      responses:
+        '200':
+          description: Login de loja realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+                
+  /api/auth/check-microsoft:
+    get:
+      tags:
+        - Autenticação
+      summary: Verificar autenticação Microsoft
+      description: Verifica se usuário já está autenticado via Microsoft
+      security: []
+      responses:
+        '200':
+          description: Status da autenticação Microsoft
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  authenticated:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/User'
+                    
+  /api/auth/logout:
+    post:
+      tags:
+        - Autenticação
+      summary: Realizar logout
+      description: Invalida o token atual e encerra sessão
+      responses:
+        '200':
+          description: Logout realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # ===========================================
+  # AGENDAMENTOS
+  # ===========================================
+  
+  /api/agendamentos:
+    get:
+      tags:
+        - Agendamentos
+      summary: Listar agendamentos
+      description: |
+        Lista agendamentos com suporte a máscaras temporárias.
+        Combina dados reais do GEMCO com modificações temporárias por sessão.
+      parameters:
+        - name: tipo
+          in: query
+          schema:
+            type: string
+            enum: [admin, loja]
+            default: admin
+          description: Tipo de usuário
+        - name: mascaras
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Incluir máscaras temporárias
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Limite de registros
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Offset para paginação
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pendente, aprovado, rejeitado]
+          description: Filtrar por status
+        - name: fornecedor
+          in: query
+          schema:
+            type: string
+          description: Filtrar por fornecedor
+        - name: data_inicio
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Data inicial (YYYY-MM-DD)
+        - name: data_fim
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Data final (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Lista de agendamentos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agendamento'
+                  sessaoId:
+                    type: string
+                    example: "sess_12345"
+                  incluiMascaras:
+                    type: boolean
+                  total:
+                    type: integer
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                    
+    post:
+      tags:
+        - Agendamentos
+      summary: Criar agendamento temporário
+      description: |
+        Cria um agendamento temporário (máscara visual) que não persiste no sistema GEMCO.
+        Útil para simulações e testes de cenários.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgendamentoInput'
+      responses:
+        '201':
+          description: Agendamento temporário criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Agendamento'
+                  message:
+                    type: string
+                    example: "Agendamento visual criado (não persistido)"
+                  tipo:
+                    type: string
+                    example: "TEMPORARIO"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+          
+  /api/agendamentos/{id}:
+    put:
+      tags:
+        - Agendamentos
+      summary: Atualizar agendamento temporário
+      description: Atualiza um agendamento temporário existente na sessão atual
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "temp_67890"
+          description: ID do agendamento temporário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgendamentoInput'
+      responses:
+        '200':
+          description: Agendamento atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Agendamento'
+                  message:
+                    type: string
+                    example: "Agendamento visual atualizado (não persistido)"
+                    
+    delete:
+      tags:
+        - Agendamentos
+      summary: Remover agendamento temporário
+      description: Remove um agendamento temporário da sessão atual
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "temp_67890"
+      responses:
+        '200':
+          description: Agendamento removido com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Agendamento visual removido (não persistido)"
+                  id:
+                    type: string
+                    
+  /api/agendamentos/{id}/aprovar:
+    post:
+      tags:
+        - Agendamentos
+      summary: Aprovar agendamento
+      description: Aprova um agendamento (ação visual apenas, não persiste)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                observacoes:
+                  type: string
+                  example: "Aprovado conforme análise"
+      responses:
+        '200':
+          description: Agendamento aprovado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Agendamento'
+                    
+  /api/agendamentos/{id}/rejeitar:
+    post:
+      tags:
+        - Agendamentos
+      summary: Rejeitar agendamento
+      description: Rejeita um agendamento (ação visual apenas, não persiste)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "1"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo:
+                  type: string
+                  example: "Documentação incompleta"
+      responses:
+        '200':
+          description: Agendamento rejeitado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # ===========================================
+  # MONITORAMENTO
+  # ===========================================
+  
+  /ping:
+    get:
+      tags:
+        - Monitoramento
+      summary: Teste de conectividade
+      description: Endpoint simples para verificar se o serviço está respondendo
+      security: []
+      responses:
+        '200':
+          description: Serviço operacional
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "pong"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+                    example: "Sistema operacional"
+                    
+  /health:
+    get:
+      tags:
+        - Monitoramento
+      summary: Health check básico
+      description: Verificação básica da saúde do sistema
+      security: []
+      responses:
+        '200':
+          description: Sistema saudável
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+                
+  /health/detailed:
+    get:
+      tags:
+        - Monitoramento
+      summary: Health check detalhado
+      description: |
+        Verificação detalhada da saúde do sistema incluindo configurações de segurança.
+        **Requer permissões de administrador.**
+      responses:
+        '200':
+          description: Status detalhado do sistema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthCheck'
+                
+  /health/database:
+    get:
+      tags:
+        - Monitoramento
+      summary: Status do banco de dados
+      description: Verificação específica da conectividade e status do banco de dados
+      responses:
+        '200':
+          description: Status do banco de dados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseHealth'
+                
+  /health/rate-limits:
+    get:
+      tags:
+        - Monitoramento
+      summary: Status dos rate limits
+      description: Informações sobre os limites de taxa atuais e configurações
+      responses:
+        '200':
+          description: Informações dos rate limits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitInfo'
+
+# ===========================================
+# COMPONENTES REUTILIZÁVEIS
+# ===========================================
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtido através do login
+    SessionAuth:
+      type: apiKey
+      in: header
+      name: X-Session-Id
+      description: ID da sessão para máscaras temporárias
+      
+  schemas:
+    # Modelos de Dados
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "João Silva"
+        re:
+          type: string
+          example: "123456"
+        perfil:
+          type: string
+          enum: [admin, loja, usuario]
+          example: "admin"
+        loja:
+          type: string
+          example: "LOJA01"
+        ativo:
+          type: boolean
+          example: true
+          
+    Agendamento:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+          description: ID numérico para dados reais, "temp_" para temporários
+        produto:
+          type: string
+          example: "PRODUTO TESTE"
+        descricao:
+          type: string
+          example: "Descrição do produto"
+        fornecedor:
+          type: string
+          example: "FORNECEDOR LTDA"
+        quantidade:
+          type: number
+          example: 100
+        data:
+          type: string
+          format: date
+          example: "2025-09-20"
+        hora:
+          type: string
+          format: time
+          example: "14:00"
+        status_aprovacao:
+          type: string
+          enum: [pendente, aprovado, rejeitado]
+          example: "pendente"
+        observacoes:
+          type: string
+          example: "Observações importantes"
+        criado_em:
+          type: string
+          format: date-time
+          example: "2025-09-16T17:00:00.000Z"
+        usuario_criacao:
+          type: string
+          example: "João Silva"
+        tipo:
+          type: string
+          enum: [ORIGINAL, TEMPORARIO]
+          example: "ORIGINAL"
+        isTemporario:
+          type: boolean
+          example: false
+        sessaoId:
+          type: string
+          example: "sess_12345"
+          
+    AgendamentoInput:
+      type: object
+      required:
+        - data
+      properties:
+        produto:
+          type: string
+          example: "PRODUTO NOVO"
+          description: Nome do produto (obrigatório se 'descricao' não fornecida)
+        descricao:
+          type: string
+          example: "Descrição do produto"
+          description: Descrição (obrigatório se 'produto' não fornecido)
+        fornecedor:
+          type: string
+          example: "FORNECEDOR XYZ"
+        quantidade:
+          type: number
+          minimum: 0.01
+          example: 50
+        data:
+          type: string
+          format: date
+          example: "2025-09-25"
+          description: Data do agendamento (obrigatório)
+        hora:
+          type: string
+          format: time
+          example: "09:30"
+        observacoes:
+          type: string
+          example: "Observações adicionais"
+          
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+        totalPages:
+          type: integer
+          example: 3
+        currentPage:
+          type: integer
+          example: 1
+          
+    # Respostas
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Login realizado com sucesso"
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expiresIn:
+          type: string
+          example: "8h"
+          
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operação realizada com sucesso"
+          
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Mensagem de erro"
+        code:
+          type: string
+          example: "ERROR_CODE"
+        timestamp:
+          type: string
+          format: date-time
+          
+    # Health Checks
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+          example: 3600
+        environment:
+          type: string
+          example: "development"
+        version:
+          type: string
+          example: "1.0.0"
+        system:
+          type: object
+          properties:
+            memory:
+              type: object
+              properties:
+                used:
+                  type: number
+                  example: 45
+                total:
+                  type: number
+                  example: 128
+            cpu:
+              type: object
+              
+    DetailedHealthCheck:
+      allOf:
+        - $ref: '#/components/schemas/HealthCheck'
+        - type: object
+          properties:
+            security:
+              type: object
+              properties:
+                secrets:
+                  type: object
+                cors:
+                  type: object
+                rateLimit:
+                  type: object
+            environmentVariables:
+              type: object
+              
+    DatabaseHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        database:
+          type: string
+          example: "agenda_mercadorias"
+        host:
+          type: string
+          example: "localhost"
+        pool:
+          type: object
+          properties:
+            limit:
+              type: integer
+              example: 20
+            activeConnections:
+              type: integer
+              example: 3
+            freeConnections:
+              type: integer
+              example: 17
+            queuedRequests:
+              type: integer
+              example: 0
+        timestamp:
+          type: string
+          format: date-time
+          
+    RateLimitInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+        rateLimits:
+          type: object
+        clientInfo:
+          type: object
+          properties:
+            ip:
+              type: string
+              example: "127.0.0.1"
+            userAgent:
+              type: string
+              example: "PostmanRuntime/7.28.4"
+            headers:
+              type: array
+              items:
+                type: string
+                
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Dados inválidos na requisição"
+            code: "BAD_REQUEST"
+            
+    Unauthorized:
+      description: Não autorizado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Token ausente ou inválido"
+            code: "UNAUTHORIZED"
+            
+    Forbidden:
+      description: Acesso negado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Sem permissão para acessar este recurso"
+            code: "FORBIDDEN"
+            
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Recurso não encontrado"
+            code: "NOT_FOUND"
+            
+    UnprocessableEntity:
+      description: Entidade não processável
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Dados não passaram na validação"
+            code: "VALIDATION_ERROR"
+            
+    TooManyRequests:
+      description: Muitas requisições
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  retryAfter:
+                    type: integer
+                    example: 60
+          example:
+            success: false
+            error: "Muitas requisições. Tente novamente em 15 minutos."
+            code: "RATE_LIMIT_EXCEEDED"
+            retryAfter: 900
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Segundos para aguardar antes da próxima tentativa
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Limite de requisições
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Requisições restantes
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Timestamp de reset do limite
