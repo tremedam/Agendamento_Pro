@@ -453,7 +453,10 @@ npm start  # Ver logs no console
 ## 📈 SOBRE O PROJETO
 
 **Sistema de Agenda de Recebimento de Mercadorias**  
-Desenvolvido para otimização de processos logísticos
+Desenvolvido para otimização de processos logísticos. Estou postando ele aqui como portifólio e registro, uma vez que irei refatora-lo por completo usando novas técnologias como React, Tailwind, e talvez Next. Podem utilizar ele para quaisuqer fins dentro da proposta da licença do MIT. 
+
+Tenha em mente que isso é um dos meus primeiros projetos maiores e mais complexos.
+Se gostou considere dar uma estrela.
 
 **Características Principais**:
 
